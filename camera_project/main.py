@@ -6,8 +6,9 @@
 
 import sys
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage,QIcon
 from PyQt5.QtCore import QTimer
+import datetime
 
 import cv2
 
@@ -24,6 +25,20 @@ class window(QTabWidget):
         #variable for image
         self.image_width=640
         self.image_height=400
+        
+        #other variable
+        self.dt='0-0-0'
+        self.record_flag=False
+        
+        
+        #load icon
+        self.camera_icon=QIcon(cap_icon_path)
+        self.rec_icon=QIcon(rec_icon_path)
+        self.stop_icon=QIcon(stop_icon_path)
+        
+        
+        #to save the video
+        self.fourcc=cv2.VideoWriter_fourcc(*'XVID')
         
         
         #set up the window
@@ -42,20 +57,53 @@ class window(QTabWidget):
         """All buttons
         contains all ui things"""
         
+        #layout
+        grid=QGridLayout()
+        self.setLayout(grid)
+        
         #image label
         self.image_label = QLabel(self)
         self.image_label.setGeometry(0, 0, self.image_width, self.image_height)
-        self.show()
+        
+        
+        #capture button
+        self.captur_btn=QPushButton(self)
+        self.captur_btn.setIcon(self.camera_icon)
+        self.captur_btn.setStyleSheet("border-radius:30; border:2px solid black; border-width:3px")
+        self.captur_btn.setFixedSize(60,60)
+        self.captur_btn.clicked.connect(self.save_img)
+        
+        self.rec_btn=QPushButton(self)
+        self.rec_btn.setIcon(self.rec_icon)
+        self.rec_btn.setStyleSheet("border-radius:30; border:2px solid black; border-width:3px")
+        self.rec_btn.setFixedSize(60,60)
+        self.rec_btn.clicked.connect(self.record)
         
         #timer
         if not self.timer.isActive():
             self.cap = cv2.VideoCapture(0)
             self.timer.start(20)
             
+        #add things to the layout
+        grid.addWidget(self.captur_btn,0,0)
+        grid.addWidget(self.image_label,0,1,2,3)
+        grid.addWidget(self.rec_btn,1,0)
+            
+        self.show()
+            
     
     def update(self):
         """update frame"""
         _, self.frame = self.cap.read()
+        
+        #video record function
+        if(self.record_flag==True):
+            print('Recording...')
+            self.rec_btn.setIcon(self.stop_icon)
+            self.frame=cv2.circle(self.frame,(20,70),5,(0,0,255),10)
+        else:
+            self.rec_btn.setIcon(self.rec_icon)
+        
         frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         height, width, channel = frame.shape
         step = channel * width
@@ -65,15 +113,34 @@ class window(QTabWidget):
     
     def save_img(self):
         """update image"""
-        pass
+        print("saving image")
+        self.get_time()
+        cv2.imwrite(f"{self.dt}.jpg",self.frame)
     
     def record(self):
         """video capture"""
-        pass
+        print(self.record_flag)
+        if(self.record_flag==True):
+            self.record_flag=False
+            print('Stop the recording process')
+        else:
+            self.record_flag=True
+            print('start record')
+            self.get_time()
+            self.out=cv2.VideoWriter(f"{self.dt}.avi",self.fourcc,20.0,(self.image_width,self.image_height))
     
+    
+    def get_time(self):
+        now=datetime.datetime.now()
+        self.dt=now.strftime("%m-%d-%y,%H-%M-%S")
+        print(self.dt)
 
 
 #run
+cap_icon_path='camera_project/assets/camera.png'
+rec_icon_path='camera_project/assets/video.png'
+stop_icon_path='camera_project/assets/stop.png'
+
 app = QApplication(sys.argv)
 win = window()
 sys.exit(app.exec_())
